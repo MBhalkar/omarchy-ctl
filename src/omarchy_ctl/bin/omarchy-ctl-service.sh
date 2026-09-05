@@ -8,15 +8,19 @@ BIN_DIR="$HOME/.local/bin"
 SERVICE_FILE="$HOME/.config/systemd/user/omarchy-ctl.service"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+export PIP_DISABLE_PIP_VERSION_CHECK=1
+export PIP_NO_INPUT=1
+
 mkdir -p "$INSTALL_DIR" "$CONFIG_DIR" "$BIN_DIR" "$HOME/.config/systemd/user"
 
 if [ ! -x "$BIN_DIR/omarchy-ctl-daemon" ]; then
     echo "Installing omarchy-ctl package..."
-    pip install --user -e "$REPO_ROOT"
+    pip install --user --force-reinstall --no-deps -e "$REPO_ROOT"
 fi
 
 if [ ! -f "$CONFIG_DIR/encryption.key" ]; then
     echo "Initializing CTL encryption key..."
+    export PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
     python3 -c "
 from omarchy_ctl.storage.crypto import CryptoService
 c = CryptoService('$CONFIG_DIR/encryption.key')
