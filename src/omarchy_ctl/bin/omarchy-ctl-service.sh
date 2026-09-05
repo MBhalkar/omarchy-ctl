@@ -15,7 +15,7 @@ mkdir -p "$INSTALL_DIR" "$CONFIG_DIR" "$BIN_DIR" "$HOME/.config/systemd/user"
 
 if [ ! -x "$BIN_DIR/omarchy-ctl-daemon" ]; then
     echo "Installing omarchy-ctl package..."
-    pip install --user --force-reinstall --no-deps -e "$REPO_ROOT"
+    python3 -m pip install --user --force-reinstall --no-deps -e "$REPO_ROOT"
 fi
 
 if [ ! -f "$CONFIG_DIR/encryption.key" ]; then

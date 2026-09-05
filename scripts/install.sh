@@ -16,7 +16,7 @@ export PIP_NO_INPUT=1
 mkdir -p "$INSTALL_DIR" "$CONFIG_DIR" "$BIN_DIR" "$HOME/.config/systemd/user"
 
 echo "Installing omarchy-ctl package..."
-pip install --user --force-reinstall --no-deps -e "$REPO_ROOT"
+python3 -m pip install --user --force-reinstall --no-deps -e "$REPO_ROOT"
 
 echo "Initializing CTL encryption key..."
 export PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"

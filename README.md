@@ -12,7 +12,7 @@ bash ~/.config/omarchy/plugins/mbhalkar.ctl/scripts/install.sh
 systemctl --user enable --now omarchy-ctl.service
 ```
 
-The plugin auto-configures on first enable: it installs the Python package, initializes the encryption key, creates the systemd user service, and starts the daemon.
+After that, use `omarchy-ctl` from the CLI.
 
 ---
 
