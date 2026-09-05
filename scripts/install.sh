@@ -18,9 +18,12 @@ if [ ! -x "$VENV_DIR/bin/python" ]; then
     python3 -m venv "$VENV_DIR"
 fi
 
-echo "Installing omarchy-ctl package..."
+echo "Installing omarchy-ctl dependencies..."
 "$VENV_DIR/bin/python" -m pip install --upgrade pip
-"$VENV_DIR/bin/python" -m pip install --no-deps -e "$REPO_ROOT"
+"$VENV_DIR/bin/python" -m pip install --no-cache-dir typer aiofiles aiosqlite cryptography keybert scikit-learn python-magic pydantic pydantic-settings structlog aiohttp watchfiles argon2-cffi
+
+echo "Installing omarchy-ctl package..."
+"$VENV_DIR/bin/python" -m pip install --no-cache-dir --no-deps "$REPO_ROOT"
 
 echo "Initializing CTL encryption key..."
 "$VENV_DIR/bin/python" -c "

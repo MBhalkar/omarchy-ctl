@@ -17,9 +17,12 @@ if [ ! -x "$VENV_DIR/bin/python" ]; then
 fi
 
 if [ ! -x "$BIN_DIR/omarchy-ctl-daemon" ]; then
-    echo "Installing omarchy-ctl package..."
+    echo "Installing omarchy-ctl dependencies..."
     "$VENV_DIR/bin/python" -m pip install --upgrade pip
-    "$VENV_DIR/bin/python" -m pip install --no-deps -e "$REPO_ROOT"
+    "$VENV_DIR/bin/python" -m pip install --no-cache-dir typer aiofiles aiosqlite cryptography keybert scikit-learn python-magic pydantic pydantic-settings structlog aiohttp watchfiles argon2-cffi
+
+    echo "Installing omarchy-ctl package..."
+    "$VENV_DIR/bin/python" -m pip install --no-cache-dir --no-deps "$REPO_ROOT"
     ln -sf "$VENV_DIR/bin/omarchy-ctl" "$BIN_DIR/omarchy-ctl"
     ln -sf "$VENV_DIR/bin/omarchy-ctl-daemon" "$BIN_DIR/omarchy-ctl-daemon"
 fi
