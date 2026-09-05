@@ -35,37 +35,43 @@ class SearchIndex:
 
     async def query(self, query: SearchQuery) -> SearchResult:
         conn = await self.db.get_connection()
-        sql = "SELECT f.* FROM files f"
         params: list = []
-        joins: list[str] = []
-        where: list[str] = []
+        results: list[dict] = []
 
-        if query.tags:
-            joins.append("JOIN file_tags ft ON f.id = ft.file_id")
-            joins.append("JOIN tags t ON ft.tag_id = t.id")
-            placeholders = ",".join("?" * len(query.tags))
-            where.append(f"t.name IN ({placeholders})")
-            params.extend(query.tags)
+        if query.text and query.tags:
+            text_params = [query.text]
+            tag_params = list(query.tags)
+            text_sql = "SELECT f.* FROM files f JOIN files_fts ON files_fts.rowid = f.rowid WHERE files_fts MATCH ?"
+            tag_sql = "SELECT f.* FROM files f JOIN file_tags ft ON f.id = ft.file_id JOIN tags t ON ft.tag_id = t.id WHERE t.name IN (" + ",".join("?" * len(query.tags)) + ")"
+            sql = f"SELECT * FROM ({text_sql} UNION {tag_sql}) GROUP BY id ORDER BY modified_at DESC LIMIT ? OFFSET ?"
+            params = text_params + tag_params + [query.limit, query.offset]
+            cur = await conn.execute(sql, params)
+            results = [dict(r) for r in await cur.fetchall()]
+            count_sql = f"SELECT COUNT(DISTINCT id) FROM ({text_sql} UNION {tag_sql})"
+            cur = await conn.execute(count_sql, text_params + tag_params)
+        elif query.text:
+            sql = "SELECT f.* FROM files f JOIN files_fts ON files_fts.rowid = f.rowid WHERE files_fts MATCH ? ORDER BY f.modified_at DESC LIMIT ? OFFSET ?"
+            params = [query.text, query.limit, query.offset]
+            cur = await conn.execute(sql, params)
+            results = [dict(r) for r in await cur.fetchall()]
+            cur = await conn.execute("SELECT COUNT(*) FROM files f JOIN files_fts ON files_fts.rowid = f.rowid WHERE files_fts MATCH ?", (query.text,))
+        elif query.tags:
+            sql = "SELECT f.* FROM files f JOIN file_tags ft ON f.id = ft.file_id JOIN tags t ON ft.tag_id = t.id WHERE t.name IN (" + ",".join("?" * len(query.tags)) + ") GROUP BY f.id ORDER BY f.modified_at DESC LIMIT ? OFFSET ?"
+            params = list(query.tags) + [query.limit, query.offset]
+            cur = await conn.execute(sql, params)
+            results = [dict(r) for r in await cur.fetchall()]
+            count_sql = "SELECT COUNT(DISTINCT f.id) FROM files f JOIN file_tags ft ON f.id = ft.file_id JOIN tags t ON ft.tag_id = t.id WHERE t.name IN (" + ",".join("?" * len(query.tags)) + ")"
+            cur = await conn.execute(count_sql, query.tags)
+        else:
+            sql = "SELECT * FROM files ORDER BY modified_at DESC LIMIT ? OFFSET ?"
+            params = [query.limit, query.offset]
+            cur = await conn.execute(sql, params)
+            results = [dict(r) for r in await cur.fetchall()]
+            cur = await conn.execute("SELECT COUNT(*) FROM files")
 
-        if query.text:
-            where.append("files_fts MATCH ?")
-            params.append(query.text)
-
-        sql += " " + " ".join(joins)
-        if where:
-            sql += " WHERE " + " AND ".join(where)
-
-        count_sql = f"SELECT COUNT(*) FROM ({sql})"
-        cur = await conn.execute(count_sql, params)
         total_row = await cur.fetchone()
         total = total_row[0] if total_row else 0
-
-        sql += " ORDER BY f.modified_at DESC LIMIT ? OFFSET ?"
-        params.extend([query.limit, query.offset])
-        cur = await conn.execute(sql, params)
-        rows = await cur.fetchall()
-        files = [dict(r) for r in rows]
-        return SearchResult(files=files, total=total, query=query)
+        return SearchResult(files=results, total=total, query=query)
 
     async def index_file(self, file_id: str) -> None:
         conn = await self.db.get_connection()

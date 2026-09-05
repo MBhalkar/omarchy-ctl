@@ -52,8 +52,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(
     filename,
     extension,
     path,
-    content='files',
-    content_rowid='rowid'
+    content=''
 );
 CREATE TRIGGER IF NOT EXISTS files_ai AFTER INSERT ON files BEGIN
     INSERT INTO files_fts(rowid, filename, extension, path)

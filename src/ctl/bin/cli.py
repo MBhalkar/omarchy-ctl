@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from pathlib import Path
 
 import typer
@@ -37,12 +38,41 @@ async def _scan(paths: list[str]) -> None:
     scanner = Scanner()
     engine = ContextEngine()
     tag_mgr = TagManager(db)
+    search_idx = SearchIndex(db)
+    conn = await db.get_connection()
+    file_id_map: dict[str, str] = {}
     for p in paths:
         files = await scanner.scan_path(p)
         console.print(f"Scanned [bold]{len(files)}[/bold] files from {p}")
-        results = await engine.batch_analyze(files)
-        for fpath, candidates in results.items():
+
+        content_map: dict[str, str] = {}
+        for f in files:
+            if f.mime_type and f.mime_type.startswith("text"):
+                try:
+                    text = f.path.read_text(errors="ignore")[:2000]
+                    content_map[str(f.path)] = text
+                except Exception:
+                    pass
+
+        for f in files:
+            import uuid
+            file_id = str(uuid.uuid4())
+            await conn.execute(
+                "INSERT INTO files (id, path, filename, extension, mime_type, size_bytes, created_at, modified_at, content_hash, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (file_id, str(f.path), f.filename, f.extension, f.mime_type, f.size_bytes, f.created_at, f.modified_at, f.content_hash, f.modified_at),
+            )
+            await conn.commit()
+            file_id_map[str(f.path)] = file_id
+
+        await search_idx.rebuild()
+
+        for f in files:
+            fpath = str(f.path)
+            candidates = await engine.analyze(f, content_map.get(fpath))
             tags = await tag_mgr.suggest(candidates)
+            file_id = file_id_map.get(fpath)
+            if tags and file_id:
+                await tag_mgr.apply(file_id, tags)
             if tags:
                 console.print(f"  [green]✓[/green] {fpath}: {len(tags)} tags")
 
@@ -61,13 +91,15 @@ async def _search(query: str) -> None:
         return
     db = await get_storage("~/.local/share/ctl/ctl.db", crypto)
     idx = SearchIndex(db)
-    result = await idx.query(SearchQuery(text=query))
+    result = await idx.query(SearchQuery(text=query, tags=[query]))
     table = Table(title=f"Results for '{query}'")
     table.add_column("Path", style="cyan")
     table.add_column("Filename", style="green")
     table.add_column("Extension")
     for f in result.files:
         table.add_row(f.get("path", ""), f.get("filename", ""), f.get("extension", ""))
+    if not result.files:
+        table.add_row("", "No results", "")
     console.print(table)
 
 
