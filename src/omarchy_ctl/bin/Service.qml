@@ -10,6 +10,6 @@ Item {
     property var pluginRegistry
 
     Component.onCompleted: {
-        console.log("omarchy.ctl service loaded")
+        console.log("mbhalkar.ctl service loaded")
     }
 }

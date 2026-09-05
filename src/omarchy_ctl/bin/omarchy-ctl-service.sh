@@ -7,25 +7,26 @@ CONFIG_DIR="$HOME/.config/omarchy-ctl"
 BIN_DIR="$HOME/.local/bin"
 SERVICE_FILE="$HOME/.config/systemd/user/omarchy-ctl.service"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+VENV_DIR="$INSTALL_DIR/venv"
 
 mkdir -p "$INSTALL_DIR" "$CONFIG_DIR" "$BIN_DIR" "$HOME/.config/systemd/user"
 
-if ! python3 -m pip --version >/dev/null 2>&1; then
-    echo "Error: python-pip is required but not installed." >&2
-    echo "Install it with: sudo pacman -S python-pip" >&2
-    echo "Then re-run this script." >&2
-    exit 1
+if [ ! -x "$VENV_DIR/bin/python" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv "$VENV_DIR"
 fi
 
 if [ ! -x "$BIN_DIR/omarchy-ctl-daemon" ]; then
     echo "Installing omarchy-ctl package..."
-    python3 -m pip install --user --force-reinstall --no-deps -e "$REPO_ROOT"
+    "$VENV_DIR/bin/python" -m pip install --upgrade pip
+    "$VENV_DIR/bin/python" -m pip install --no-deps -e "$REPO_ROOT"
+    ln -sf "$VENV_DIR/bin/omarchy-ctl" "$BIN_DIR/omarchy-ctl"
+    ln -sf "$VENV_DIR/bin/omarchy-ctl-daemon" "$BIN_DIR/omarchy-ctl-daemon"
 fi
 
 if [ ! -f "$CONFIG_DIR/encryption.key" ]; then
     echo "Initializing CTL encryption key..."
-    export PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
-    python3 -c "
+    "$VENV_DIR/bin/python" -c "
 from omarchy_ctl.storage.crypto import CryptoService
 c = CryptoService('$CONFIG_DIR/encryption.key')
 c.initialize('default')
@@ -35,14 +36,14 @@ fi
 
 if [ ! -f "$SERVICE_FILE" ]; then
     echo "Creating systemd user service..."
-    cat > "$SERVICE_FILE" << 'EOF'
+    cat > "$SERVICE_FILE" << EOF
 [Unit]
 Description=CTL IPC Daemon
 After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/omarchy-ctl-daemon
+ExecStart=$VENV_DIR/bin/omarchy-ctl-daemon
 Restart=on-failure
 RestartSec=5
 
@@ -54,4 +55,4 @@ fi
 systemctl --user daemon-reload || true
 systemctl --user enable --now omarchy-ctl.service || true
 
-exec "$BIN_DIR/omarchy-ctl-daemon"
+exec "$VENV_DIR/bin/omarchy-ctl-daemon"
