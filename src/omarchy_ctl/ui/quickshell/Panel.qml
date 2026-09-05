@@ -11,6 +11,7 @@ Panel {
   ipcTarget: "mbhalkar.ctl"
   manageIpc: false
 
+  property var anchorItem: null
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
 
