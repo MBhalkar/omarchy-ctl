@@ -114,7 +114,7 @@ CTL is architected as a set of decoupled, asynchronous services that run indepen
 ### 1.2.6 UI Interface Module
 - **Purpose:** Provide user-facing interfaces for CTL interaction
 - **Components:**
-  - CLI (`ctl` command with subcommands)
+  - CLI (`omarchy-ctl` command with subcommands)
   - IPC REST server (localhost-only, Unix socket)
   - Quickshell widget (for bar integration)
   - Notification daemon hooks
@@ -257,7 +257,7 @@ CREATE TABLE links (
 
 ## 1.6 Security Model
 
-- **At Rest:** All tag and link metadata encrypted with AES-256-GCM using a user-derived key (from `~/.config/ctl/key`)
+- **At Rest:** All tag and link metadata encrypted with AES-256-GCM using a user-derived key (from `~/.config/omarchy-ctl/key`)
 - **In Transit:** IPC communication over Unix socket with filesystem permissions (600)
 - **Access Control:** CTL daemon runs as user process; no root required
 - **Key Derivation:** Argon2id from user password or system keyring integration
@@ -325,7 +325,7 @@ Python is selected as the primary implementation language for the following reas
 
 ### Step 1: Project Scaffolding
 - Initialize `pyproject.toml` with dependencies and entry points
-- Create module structure (`ctl/` package layout)
+- Create module structure (`omarchy_ctl/` package layout)
 - Set up logging, config, and error handling frameworks
 - Implement `CryptoService` (AES-256-GCM + Argon2id)
 
@@ -363,7 +363,7 @@ Python is selected as the primary implementation language for the following reas
 - Add result ranking by relevance and recency
 
 ### Step 8: CLI Interface
-- Build `ctl` CLI with `typer`
+- Build `omarchy-ctl` CLI with `typer`
 - Subcommands: `scan`, `tags`, `links`, `search`, `status`
 - Add `--json` output for scripting
 
@@ -375,7 +375,7 @@ Python is selected as the primary implementation language for the following reas
 - Write unit tests for each module (`pytest`)
 - Create `omarchy plugin` packaging manifest
 - Add installation script for systemd user service
-- Document configuration options in `config/ctl.toml`
+- Document configuration options in `config/omarchy-ctl.toml`
 
 ## Phase 2: Enhancement (Post-MVP)
 
@@ -404,11 +404,11 @@ confidence_threshold = 0.5
 scan_lines = 200
 
 [storage]
-db_path = "~/.local/share/ctl/ctl.db"
-key_path = "~/.config/ctl/encryption.key"
+db_path = "~/.local/share/omarchy-ctl/omarchy-ctl.db"
+key_path = "~/.config/omarchy-ctl/encryption.key"
 
 [server]
-socket_path = "~/.local/share/ctl/ctl.sock"
+socket_path = "~/.local/share/omarchy-ctl/omarchy-ctl.sock"
 enable = true
 
 [ui]

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from ctl.core.scanner import FileRef
+from omarchy_ctl.core.scanner import FileRef
 
 
 @dataclass(frozen=True)

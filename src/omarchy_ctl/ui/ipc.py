@@ -10,17 +10,17 @@ from typing import Any
 from aiohttp import web
 from aiohttp.web import Request, Response
 
-from ctl.core.context import ContextEngine
-from ctl.core.links import LinkManager
-from ctl.core.scanner import Scanner
-from ctl.core.search import SearchIndex, SearchQuery
-from ctl.core.tags import TagManager
-from ctl.storage.crypto import CryptoService
-from ctl.storage.database import get_storage
+from omarchy_ctl.core.context import ContextEngine
+from omarchy_ctl.core.links import LinkManager
+from omarchy_ctl.core.scanner import Scanner
+from omarchy_ctl.core.search import SearchIndex, SearchQuery
+from omarchy_ctl.core.tags import TagManager
+from omarchy_ctl.storage.crypto import CryptoService
+from omarchy_ctl.storage.database import get_storage
 
 
 class IPCService:
-    def __init__(self, socket_path: str = "~/.local/share/ctl/ctl.sock") -> None:
+    def __init__(self, socket_path: str = "~/.local/share/omarchy-ctl/omarchy-ctl.sock") -> None:
         self.socket_path = Path(socket_path).expanduser()
         self.socket_path.parent.mkdir(parents=True, exist_ok=True)
         self.app = web.Application()
@@ -35,9 +35,9 @@ class IPCService:
         self.app.router.add_get("/search", self.handle_search)
 
     async def _get_services(self):
-        crypto = CryptoService(Path("~/.config/ctl/encryption.key").expanduser())
+        crypto = CryptoService(Path("~/.config/omarchy-ctl/encryption.key").expanduser())
         crypto.load("default")
-        db = await get_storage("~/.local/share/ctl/ctl.db", crypto)
+        db = await get_storage("~/.local/share/omarchy-ctl/omarchy-ctl.db", crypto)
         return {
             "scanner": Scanner(),
             "engine": ContextEngine(),

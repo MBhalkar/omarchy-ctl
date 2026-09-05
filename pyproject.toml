@@ -41,7 +41,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ctl = "ctl.bin.cli:app"
+omarchy-ctl = "omarchy_ctl.bin.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from ctl.core.context import TagCandidate
+from omarchy_ctl.core.context import TagCandidate
 
 
 @dataclass(frozen=True)

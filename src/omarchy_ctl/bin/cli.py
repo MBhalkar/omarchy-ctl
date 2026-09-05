@@ -10,15 +10,15 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from ctl.core.context import ContextEngine
-from ctl.core.links import LinkManager
-from ctl.core.scanner import Scanner
-from ctl.core.search import SearchQuery, SearchIndex
-from ctl.core.tags import TagManager
-from ctl.storage.crypto import CryptoService
-from ctl.storage.database import get_storage
+from omarchy_ctl.core.context import ContextEngine
+from omarchy_ctl.core.links import LinkManager
+from omarchy_ctl.core.scanner import Scanner
+from omarchy_ctl.core.search import SearchQuery, SearchIndex
+from omarchy_ctl.core.tags import TagManager
+from omarchy_ctl.storage.crypto import CryptoService
+from omarchy_ctl.storage.database import get_storage
 
-app = typer.Typer(name="ctl", help="Contextual Tagging & Linking for Omarchy")
+app = typer.Typer(name="omarchy-ctl", help="Contextual Tagging & Linking for Omarchy")
 console = Console()
 
 
@@ -29,12 +29,12 @@ def scan(paths: list[str] = typer.Argument(..., help="Paths to scan")) -> None:
 
 
 async def _scan(paths: list[str]) -> None:
-    crypto = CryptoService(Path("~/.config/ctl/encryption.key").expanduser())
+    crypto = CryptoService(Path("~/.config/omarchy-ctl/encryption.key").expanduser())
     try:
         crypto.load("default")
     except Exception:
         crypto.initialize("default")
-    db = await get_storage("~/.local/share/ctl/ctl.db", crypto)
+    db = await get_storage("~/.local/share/omarchy-ctl/omarchy-ctl.db", crypto)
     scanner = Scanner()
     engine = ContextEngine()
     tag_mgr = TagManager(db)
@@ -84,12 +84,12 @@ def search(query: str = typer.Argument(..., help="Search query")) -> None:
 
 
 async def _search(query: str) -> None:
-    crypto = CryptoService(Path("~/.config/ctl/encryption.key").expanduser())
+    crypto = CryptoService(Path("~/.config/omarchy-ctl/encryption.key").expanduser())
     try:
         crypto.load("default")
     except Exception:
         return
-    db = await get_storage("~/.local/share/ctl/ctl.db", crypto)
+    db = await get_storage("~/.local/share/omarchy-ctl/omarchy-ctl.db", crypto)
     idx = SearchIndex(db)
     result = await idx.query(SearchQuery(text=query, tags=[query]))
     table = Table(title=f"Results for '{query}'")
@@ -110,12 +110,12 @@ def tags() -> None:
 
 
 async def _tags() -> None:
-    crypto = CryptoService(Path("~/.config/ctl/encryption.key").expanduser())
+    crypto = CryptoService(Path("~/.config/omarchy-ctl/encryption.key").expanduser())
     try:
         crypto.load("default")
     except Exception:
         return
-    db = await get_storage("~/.local/share/ctl/ctl.db", crypto)
+    db = await get_storage("~/.local/share/omarchy-ctl/omarchy-ctl.db", crypto)
     tag_mgr = TagManager(db)
     tags = await tag_mgr.list()
     table = Table(title="Tags")
@@ -134,12 +134,12 @@ def link(source: str, target: str, relation: str = "related_to") -> None:
 
 
 async def _link(source: str, target: str, relation: str) -> None:
-    crypto = CryptoService(Path("~/.config/ctl/encryption.key").expanduser())
+    crypto = CryptoService(Path("~/.config/omarchy-ctl/encryption.key").expanduser())
     try:
         crypto.load("default")
     except Exception:
         return
-    db = await get_storage("~/.local/share/ctl/ctl.db", crypto)
+    db = await get_storage("~/.local/share/omarchy-ctl/omarchy-ctl.db", crypto)
     link_mgr = LinkManager(db)
     link = await link_mgr.create(source, target, relation)
     console.print(f"Created link: [bold]{link.source_id}[/bold] -> [bold]{link.target_id}[/bold] ({relation})")
@@ -149,7 +149,7 @@ async def _link(source: str, target: str, relation: str) -> None:
 def status() -> None:
     """Show CTL daemon status."""
     console.print("[bold green]CTL[/bold green] is ready")
-    crypto = CryptoService(Path("~/.config/ctl/encryption.key").expanduser())
+    crypto = CryptoService(Path("~/.config/omarchy-ctl/encryption.key").expanduser())
     if crypto.key_path.exists():
         console.print(f"Key: [green]present[/green] at {crypto.key_path}")
     else:

@@ -6,7 +6,7 @@ import asyncio
 import signal
 from pathlib import Path
 
-from ctl.ui.ipc import IPCService
+from omarchy_ctl.ui.ipc import IPCService
 
 
 async def main() -> None:

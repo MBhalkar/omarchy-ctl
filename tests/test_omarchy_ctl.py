@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from ctl.core.context import ContextEngine, KeywordAnalyzer, MetadataAnalyzer
-from ctl.core.links import LinkManager
-from ctl.core.scanner import Scanner
-from ctl.core.search import SearchIndex, SearchQuery
-from ctl.core.tags import TagManager
-from ctl.storage.crypto import CryptoService
-from ctl.storage.database import Database
+from omarchy_ctl.core.context import ContextEngine, KeywordAnalyzer, MetadataAnalyzer
+from omarchy_ctl.core.links import LinkManager
+from omarchy_ctl.core.scanner import Scanner
+from omarchy_ctl.core.search import SearchIndex, SearchQuery
+from omarchy_ctl.core.tags import TagManager
+from omarchy_ctl.storage.crypto import CryptoService
+from omarchy_ctl.storage.database import Database
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def test_crypto_service_roundtrip():
 
 def test_metadata_analyzer():
     analyzer = MetadataAnalyzer()
-    from ctl.core.scanner import FileRef
+    from omarchy_ctl.core.scanner import FileRef
 
     f = FileRef(
         path=Path("/home/user/Documents/report.pdf"),
@@ -61,7 +61,7 @@ def test_metadata_analyzer():
 
 def test_keyword_analyzer():
     analyzer = KeywordAnalyzer(max_keywords=3, confidence_threshold=0.1)
-    from ctl.core.scanner import FileRef
+    from omarchy_ctl.core.scanner import FileRef
 
     f = FileRef(
         path=Path("/tmp/test.txt"),
@@ -95,7 +95,7 @@ async def test_scanner_ignores_large_files():
 @pytest.mark.asyncio
 async def test_tag_manager_crud(tmp_db):
     mgr = TagManager(tmp_db)
-    from ctl.core.context import TagCandidate
+    from omarchy_ctl.core.context import TagCandidate
 
     tag = await mgr.suggest([TagCandidate(name="alpha", category="keyword", confidence=0.9, source="test")])
     assert len(tag) == 1

@@ -6,7 +6,7 @@ import aiosqlite
 from pathlib import Path
 from typing import Any
 
-from ctl.storage.crypto import CryptoService
+from omarchy_ctl.storage.crypto import CryptoService
 
 
 SCHEMA = """

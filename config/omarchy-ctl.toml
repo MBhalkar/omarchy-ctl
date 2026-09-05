@@ -11,11 +11,11 @@ confidence_threshold = 0.5
 scan_lines = 200
 
 [storage]
-db_path = "~/.local/share/ctl/ctl.db"
-key_path = "~/.config/ctl/encryption.key"
+db_path = "~/.local/share/omarchy-ctl/omarchy-ctl.db"
+key_path = "~/.config/omarchy-ctl/encryption.key"
 
 [server]
-socket_path = "~/.local/share/ctl/ctl.sock"
+socket_path = "~/.local/share/omarchy-ctl/omarchy-ctl.sock"
 enable = true
 
 [ui]
