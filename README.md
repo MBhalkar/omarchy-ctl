@@ -8,6 +8,8 @@ CTL is an intelligent file organization plugin for Omarchy OS that automatically
 
 ```bash
 omarchy plugin add https://github.com/MBhalkar/omarchy-ctl.git
+bash ~/.config/omarchy/plugins/omarchy.ctl/scripts/install.sh
+systemctl --user enable --now omarchy-ctl.service
 ```
 
 The plugin auto-configures on first enable: it installs the Python package, initializes the encryption key, creates the systemd user service, and starts the daemon.

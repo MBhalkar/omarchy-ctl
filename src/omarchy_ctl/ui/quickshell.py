@@ -7,12 +7,12 @@ from pathlib import Path
 
 class QuickshellWidget:
     def __init__(self) -> None:
-        self.plugin_dir = Path("~/.config/omarchy/plugins/MBhalkar.omarchy-ctl").expanduser()
+        self.plugin_dir = Path("~/.config/omarchy/plugins/omarchy.ctl").expanduser()
 
     def install(self) -> None:
         self.plugin_dir.mkdir(parents=True, exist_ok=True)
         metadata = self.plugin_dir / "metadata.json"
-        metadata.write_text('{"id": "MBhalkar.omarchy-ctl", "name": "CTL", "version": "0.1.0"}')
+        metadata.write_text('{"id": "omarchy.ctl", "name": "CTL", "version": "0.1.0"}')
         main = self.plugin_dir / "main.qml"
         main.write_text(
             """

@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-PLUGIN_DIR="$HOME/.config/omarchy/plugins/MBhalkar.omarchy-ctl"
+PLUGIN_DIR="$HOME/.config/omarchy/plugins/omarchy.ctl"
 INSTALL_DIR="$HOME/.local/share/omarchy-ctl"
 CONFIG_DIR="$HOME/.config/omarchy-ctl"
 

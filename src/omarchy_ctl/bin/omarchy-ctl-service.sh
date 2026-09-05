@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLUGIN_DIR="$HOME/.config/omarchy/plugins/omarchy-ctl"
+PLUGIN_DIR="$HOME/.config/omarchy/plugins/omarchy.ctl"
 INSTALL_DIR="$HOME/.local/share/omarchy-ctl"
 CONFIG_DIR="$HOME/.config/omarchy-ctl"
 BIN_DIR="$HOME/.local/bin"
