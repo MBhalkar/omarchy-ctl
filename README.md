@@ -27,6 +27,26 @@ systemctl --user enable --now omarchy-ctl.service
 
 After that, use `omarchy-ctl` from the CLI.
 
+### Bar Widget
+
+The install script also installs a Quickshell bar widget. After installation, move it to your preferred bar section:
+
+```bash
+omarchy bar move mbhalkar.ctl --section left
+```
+
+You can also place it in `center` or `right`. Click the widget in the bar to open a search popup. Right-click the widget to reload tags.
+
+## CLI Usage
+
+| Command | Description |
+|---------|-------------|
+| `omarchy-ctl scan <paths...>` | Scan files and generate tags |
+| `omarchy-ctl search <query>` | Search files by tags or content |
+| `omarchy-ctl tags` | List all tags |
+| `omarchy-ctl link <source> <target> [relation]` | Create a link between two files |
+| `omarchy-ctl status` | Show CTL daemon status |
+
 ---
 
 # 1. Architectural Design Document

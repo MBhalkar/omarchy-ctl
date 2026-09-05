@@ -105,12 +105,12 @@ async def _scan(paths: list[str]) -> None:
 
 
 @app.command()
-def search(query: str = typer.Argument(..., help="Search query")) -> None:
+def search(query: str = typer.Argument(..., help="Search query"), json: bool = typer.Option(False, "--json", help="Output JSON")) -> None:
     """Search files by tags or content."""
-    asyncio.run(_search(query))
+    asyncio.run(_search(query, json))
 
 
-async def _search(query: str) -> None:
+async def _search(query: str, json_output: bool = False) -> None:
     crypto = CryptoService(Path("~/.config/omarchy-ctl/encryption.key").expanduser())
     try:
         crypto.load("default")
@@ -119,6 +119,14 @@ async def _search(query: str) -> None:
     db = await get_storage("~/.local/share/omarchy-ctl/omarchy-ctl.db", crypto)
     idx = SearchIndex(db)
     result = await idx.query(SearchQuery(text=query, tags=[query]))
+    if json_output:
+        import json as _json
+        console.print(_json.dumps({
+            "query": query,
+            "total": result.total,
+            "files": result.files
+        }))
+        return
     table = Table(title=f"Results for '{query}'")
     table.add_column("Path", style="cyan")
     table.add_column("Filename", style="green")
@@ -131,12 +139,12 @@ async def _search(query: str) -> None:
 
 
 @app.command()
-def tags() -> None:
+def tags(json: bool = typer.Option(False, "--json", help="Output JSON")) -> None:
     """List all tags."""
-    asyncio.run(_tags())
+    asyncio.run(_tags(json))
 
 
-async def _tags() -> None:
+async def _tags(json_output: bool = False) -> None:
     crypto = CryptoService(Path("~/.config/omarchy-ctl/encryption.key").expanduser())
     try:
         crypto.load("default")
@@ -145,6 +153,10 @@ async def _tags() -> None:
     db = await get_storage("~/.local/share/omarchy-ctl/omarchy-ctl.db", crypto)
     tag_mgr = TagManager(db)
     tags = await tag_mgr.list()
+    if json_output:
+        import json as _json
+        console.print(_json.dumps([{"name": t.name, "category": t.category or "", "source": t.source} for t in tags]))
+        return
     table = Table(title="Tags")
     table.add_column("Name", style="cyan")
     table.add_column("Category")

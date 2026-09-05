@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "mbhalkar.ctl",
+  "name": "Contextual Tagging & Linking",
+  "version": "0.1.0",
+  "author": "CTL Contributors",
+  "description": "Search files by tags and content from the bar",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "CTL Search",
+    "description": "Search files by tags and content",
+    "category": "Productivity",
+    "allowMultiple": false,
+    "defaultSection": "left"
+  }
+}

@@ -52,5 +52,12 @@ EOF
 ln -sf "$VENV_DIR/bin/omarchy-ctl" "$BIN_DIR/omarchy-ctl"
 ln -sf "$VENV_DIR/bin/omarchy-ctl-daemon" "$BIN_DIR/omarchy-ctl-daemon"
 
+echo "Installing Quickshell widget..."
+"$VENV_DIR/bin/python" -c "
+from omarchy_ctl.ui.quickshell_install import QuickshellWidget
+QuickshellWidget().install()
+print('Widget installed.')
+"
+
 echo "CTL plugin installed."
 echo "Enable with: systemctl --user enable --now omarchy-ctl.service"
