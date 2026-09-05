@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import Omarchy
 
 Item {
     id: root

@@ -8,10 +8,14 @@ BIN_DIR="$HOME/.local/bin"
 SERVICE_FILE="$HOME/.config/systemd/user/omarchy-ctl.service"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-export PIP_DISABLE_PIP_VERSION_CHECK=1
-export PIP_NO_INPUT=1
-
 mkdir -p "$INSTALL_DIR" "$CONFIG_DIR" "$BIN_DIR" "$HOME/.config/systemd/user"
+
+if ! python3 -m pip --version >/dev/null 2>&1; then
+    echo "Error: python-pip is required but not installed." >&2
+    echo "Install it with: sudo pacman -S python-pip" >&2
+    echo "Then re-run this script." >&2
+    exit 1
+fi
 
 if [ ! -x "$BIN_DIR/omarchy-ctl-daemon" ]; then
     echo "Installing omarchy-ctl package..."

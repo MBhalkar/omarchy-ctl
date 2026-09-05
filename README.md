@@ -8,6 +8,19 @@ CTL is an intelligent file organization plugin for Omarchy OS that automatically
 
 ```bash
 omarchy plugin add https://github.com/MBhalkar/omarchy-ctl.git
+```
+
+### Prerequisites
+
+- **python-pip** — required to install Python dependencies. Install it first:
+
+  ```bash
+  sudo pacman -S python-pip
+  ```
+
+### Post-Install
+
+```bash
 bash ~/.config/omarchy/plugins/mbhalkar.ctl/scripts/install.sh
 systemctl --user enable --now omarchy-ctl.service
 ```
