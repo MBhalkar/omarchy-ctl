@@ -7,7 +7,7 @@ CTL is an intelligent file organization plugin for Omarchy OS that automatically
 ## Quick Install
 
 ```bash
-omarchy plugin add https://github.com/<username>/omarchy-ctl.git
+omarchy plugin add https://github.com/MBhalkar/omarchy-ctl.git
 ```
 
 ---
