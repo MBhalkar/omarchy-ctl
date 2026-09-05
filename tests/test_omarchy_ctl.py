@@ -127,9 +127,22 @@ async def test_search_index_query(tmp_db):
     mgr = TagManager(tmp_db)
     idx = SearchIndex(tmp_db)
     conn = await tmp_db.get_connection()
-    await conn.execute("INSERT INTO files (id, path, filename, extension) VALUES (?, ?, ?, ?)", ("f1", "/a/b.txt", "b.txt", "txt"))
+    await conn.execute("INSERT INTO files (id, path, filename, extension, content) VALUES (?, ?, ?, ?, ?)", ("f1", "/a/b.txt", "b.txt", "txt", "hello world license test"))
     await conn.commit()
     await idx.rebuild()
-    result = await idx.query(SearchQuery(text="txt"))
+    result = await idx.query(SearchQuery(text="license"))
     assert result.total >= 1
     assert any(f["filename"] == "b.txt" for f in result.files)
+
+
+@pytest.mark.asyncio
+async def test_search_content_matches(tmp_db):
+    idx = SearchIndex(tmp_db)
+    conn = await tmp_db.get_connection()
+    await conn.execute("INSERT INTO files (id, path, filename, extension, content) VALUES (?, ?, ?, ?, ?)", ("f1", "/a/b.txt", "b.txt", "txt", "hello world"))
+    await conn.execute("INSERT INTO files (id, path, filename, extension, content) VALUES (?, ?, ?, ?, ?)", ("f2", "/a/c.txt", "c.txt", "txt", "goodbye world"))
+    await conn.commit()
+    await idx.rebuild()
+    result = await idx.query(SearchQuery(text="hello"))
+    assert result.total == 1
+    assert result.files[0]["filename"] == "b.txt"

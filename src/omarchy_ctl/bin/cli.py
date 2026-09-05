@@ -57,9 +57,10 @@ async def _scan(paths: list[str]) -> None:
         for f in files:
             import uuid
             file_id = str(uuid.uuid4())
+            content = content_map.get(str(f.path), "")
             await conn.execute(
-                "INSERT INTO files (id, path, filename, extension, mime_type, size_bytes, created_at, modified_at, content_hash, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (file_id, str(f.path), f.filename, f.extension, f.mime_type, f.size_bytes, f.created_at, f.modified_at, f.content_hash, f.modified_at),
+                "INSERT INTO files (id, path, filename, extension, mime_type, size_bytes, created_at, modified_at, content_hash, content, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (file_id, str(f.path), f.filename, f.extension, f.mime_type, f.size_bytes, f.created_at, f.modified_at, f.content_hash, content, f.modified_at),
             )
             await conn.commit()
             file_id_map[str(f.path)] = file_id

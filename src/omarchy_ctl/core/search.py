@@ -75,7 +75,7 @@ class SearchIndex:
 
     async def index_file(self, file_id: str) -> None:
         conn = await self.db.get_connection()
-        await conn.execute("INSERT OR IGNORE INTO files_fts(rowid, filename, extension, path) SELECT rowid, filename, extension, path FROM files WHERE id = ?", (file_id,))
+        await conn.execute("INSERT OR IGNORE INTO files_fts(rowid, filename, extension, path, content) SELECT rowid, filename, extension, path, COALESCE(content, '') FROM files WHERE id = ?", (file_id,))
         await conn.commit()
 
     async def remove_file(self, file_id: str) -> None:
@@ -85,5 +85,5 @@ class SearchIndex:
 
     async def rebuild(self) -> None:
         conn = await self.db.get_connection()
-        await conn.execute("INSERT INTO files_fts(rowid, filename, extension, path) SELECT rowid, filename, extension, path FROM files")
+        await conn.execute("INSERT OR REPLACE INTO files_fts(rowid, filename, extension, path, content) SELECT rowid, filename, extension, path, COALESCE(content, '') FROM files")
         await conn.commit()

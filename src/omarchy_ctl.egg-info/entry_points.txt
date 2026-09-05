@@ -1,0 +1,3 @@
+[console_scripts]
+omarchy-ctl = omarchy_ctl.bin.cli:app
+omarchy-ctl-daemon = omarchy_ctl.bin.omarchy_ctl_daemon:run

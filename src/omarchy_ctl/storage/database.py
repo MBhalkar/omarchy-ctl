@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS files (
     created_at TEXT,
     modified_at TEXT,
     content_hash TEXT,
+    content TEXT,
     scan_status TEXT DEFAULT 'pending',
     last_scanned TEXT
 );
@@ -52,15 +53,15 @@ CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(
     filename,
     extension,
     path,
-    content=''
+    content
 );
 CREATE TRIGGER IF NOT EXISTS files_ai AFTER INSERT ON files BEGIN
-    INSERT INTO files_fts(rowid, filename, extension, path)
-    VALUES (new.rowid, new.filename, new.extension, new.path);
+    INSERT INTO files_fts(rowid, filename, extension, path, content)
+    VALUES (new.rowid, new.filename, new.extension, new.path, COALESCE(new.content, ''));
 END;
 CREATE TRIGGER IF NOT EXISTS files_ad AFTER DELETE ON files BEGIN
-    INSERT INTO files_fts(files_fts, rowid, filename, extension, path)
-    VALUES ('delete', old.rowid, old.filename, old.extension, old.path);
+    INSERT INTO files_fts(files_fts, rowid, filename, extension, path, content)
+    VALUES ('delete', old.rowid, old.filename, old.extension, old.path, COALESCE(old.content, ''));
 END;
 """
 
@@ -83,6 +84,37 @@ class Database:
         self._conn.row_factory = aiosqlite.Row
         await self._conn.executescript(SCHEMA)
         await self._conn.commit()
+        await self._migrate()
+
+    async def _migrate(self) -> None:
+        conn = await self.get_connection()
+        cur = await conn.execute("PRAGMA table_info(files)")
+        cols = await cur.fetchall()
+        col_names = {r["name"] for r in cols}
+        if "content" not in col_names:
+            await conn.execute("ALTER TABLE files ADD COLUMN content TEXT")
+
+        cur = await conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='files_fts'")
+        if await cur.fetchone():
+            cur = await conn.execute("PRAGMA table_info(files_fts)")
+            cols = await cur.fetchall()
+            col_names = {r["name"] for r in cols}
+            if "content" not in col_names:
+                await conn.execute("DROP TRIGGER IF EXISTS files_ai")
+                await conn.execute("DROP TRIGGER IF EXISTS files_ad")
+                await conn.execute("CREATE VIRTUAL TABLE files_fts_new USING fts5(filename, extension, path, content)")
+                await conn.execute("INSERT INTO files_fts_new(rowid, filename, extension, path, content) SELECT rowid, filename, extension, path, '' FROM files_fts")
+                await conn.execute("DROP TABLE files_fts")
+                await conn.execute("ALTER TABLE files_fts_new RENAME TO files_fts")
+                await conn.execute("""CREATE TRIGGER files_ai AFTER INSERT ON files BEGIN
+                    INSERT INTO files_fts(rowid, filename, extension, path, content)
+                    VALUES (new.rowid, new.filename, new.extension, new.path, COALESCE(new.content, ''));
+                END""")
+                await conn.execute("""CREATE TRIGGER files_ad AFTER DELETE ON files BEGIN
+                    INSERT INTO files_fts(files_fts, rowid, filename, extension, path, content)
+                    VALUES ('delete', old.rowid, old.filename, old.extension, old.path, COALESCE(old.content, ''));
+                END""")
+                await conn.commit()
 
     async def get_connection(self) -> aiosqlite.Connection:
         if self._conn is None:

@@ -1,0 +1,2 @@
+bin
+omarchy_ctl
