@@ -1,0 +1,12 @@
+[Unit]
+Description=CTL IPC Daemon
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/ctl-daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

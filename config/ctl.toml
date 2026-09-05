@@ -1,0 +1,23 @@
+[scanner]
+paths = ["~/Documents", "~/Projects"]
+ignore_dirs = [".git", "node_modules", "__pycache__", ".venv"]
+max_file_size_mb = 50
+batch_size = 100
+
+[nlp]
+model = "all-MiniLM-L6-v2"
+max_keywords = 10
+confidence_threshold = 0.5
+scan_lines = 200
+
+[storage]
+db_path = "~/.local/share/ctl/ctl.db"
+key_path = "~/.config/ctl/encryption.key"
+
+[server]
+socket_path = "~/.local/share/ctl/ctl.sock"
+enable = true
+
+[ui]
+notifications = true
+auto_scan = false
