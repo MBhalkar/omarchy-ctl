@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omarchy-ctl"
-version = "0.1.0"
+version = "1.0.0"
 description = "Contextual Tagging & Linking plugin for Omarchy OS"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
 authors = [
-    {name = "CTL Contributors"},
+    {name = "MBhalkar"},
 ]
 keywords = ["omarchy", "plugin", "tagging", "files", "nlp"]
 classifiers = [
