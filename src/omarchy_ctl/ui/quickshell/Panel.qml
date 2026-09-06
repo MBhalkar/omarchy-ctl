@@ -35,8 +35,9 @@ Item {
   readonly property color faint: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.14)
   readonly property color chipFill: Qt.rgba(accent.r, accent.g, accent.b, 0.18)
 
-  readonly property int cardWidth: Math.min(Style.space(1160), panel.width - Style.gapsOut * 2)
-  readonly property int cardHeight: Math.min(Style.space(820), panel.height - Style.gapsOut * 2)
+  readonly property int cardWidth: Math.min(Style.space(1160), panel.width - root.cardPadding * 2)
+  readonly property int cardHeight: Math.min(Style.space(820), panel.height - root.cardPadding * 2)
+  readonly property int cardPadding: Style.space(12)
   readonly property int headerHeight: Math.max(Style.space(64), Style.font.title + Style.spacing.controlPaddingY * 2)
   readonly property int contentMargin: Style.spacing.panelPadding
   readonly property int ctlRadius: Math.min(8, Style.cornerRadius)
