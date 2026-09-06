@@ -17,14 +17,19 @@ Item {
   property bool opened: false
   property var searchResults: []
   property int pageSize: 50
+  property int currentPage: 1
+  property int pendingPage: 1
   property int searchTotal: 0
   property string searchQuery: ""
   property bool searchRunning: false
-  property bool pagingMore: false
+  property bool pageFetching: false
+  property var pageCache: ({})
+  property string exportStatus: ""
+  property string exportPath: ""
   property var allTags: []
   property bool tagsRunning: false
 
-  readonly property bool hasMore: root.searchQuery !== "" && root.searchResults.length > 0 && root.searchResults.length < root.searchTotal
+  readonly property int totalPages: root.searchTotal > 0 ? Math.max(1, Math.ceil(root.searchTotal / Math.max(1, root.pageSize))) : 0
 
   readonly property var visibleResults: root.searchResults
 
@@ -97,26 +102,103 @@ Item {
     var query = searchField.text.trim()
     if (!query) return
     root.searchQuery = query
-    root.searchRunning = true
-    root.pagingMore = false
-    root.searchResults = []
+    root.pageCache = {}
+    root.currentPage = 0
+    root.pendingPage = 1
     root.searchTotal = 0
-    searchProc.command = ["/home/mb/.local/bin/omarchy-ctl", "search", query, "--json", "--limit", String(root.pageSize), "--offset", "0"]
+    root.searchResults = []
+    root.exportStatus = ""
+    root.exportPath = root.defaultExportPath()
+    root.fetchPage(1)
+  }
+
+  function fetchPage(n) {
+    if (root.pageFetching) return
+    n = Math.max(1, n)
+    var cached = root.pageCache[String(n)]
+    if (cached !== undefined) {
+      root.currentPage = n
+      root.pendingPage = n
+      root.searchResults = cached
+      return
+    }
+    root.pageFetching = true
+    root.searchRunning = true
+    root.pendingPage = n
+    searchProc.command = ["/home/mb/.local/bin/omarchy-ctl", "search", root.searchQuery, "--json", "--limit", String(root.pageSize), "--offset", String((n - 1) * root.pageSize)]
     searchProc.running = true
   }
 
-  function loadMore() {
-    if (root.searchRunning || !root.hasMore) return
-    root.searchRunning = true
-    root.pagingMore = true
-    searchProc.command = ["/home/mb/.local/bin/omarchy-ctl", "search", root.searchQuery, "--json", "--limit", String(root.pageSize), "--offset", String(root.searchResults.length)]
-    searchProc.running = true
+  function goToPage(n) {
+    n = Math.max(1, Math.min(n, root.totalPages))
+    if (n === root.currentPage) return
+    root.fetchPage(n)
+  }
+
+  function gotoPrev() {
+    root.goToPage(root.currentPage - 1)
+  }
+
+  function gotoNext() {
+    root.goToPage(root.currentPage + 1)
+  }
+
+  function onPageSizeChosen(v) {
+    var n = parseInt(v, 10)
+    if (isNaN(n) || n < 1 || n === root.pageSize) return
+    root.pageSize = n
+    root.pageCache = {}
+    if (root.searchQuery) {
+      root.currentPage = 0
+      root.pendingPage = 1
+      root.fetchPage(1)
+    }
+  }
+
+  function pageSizeOptions() {
+    return CtlModel.pageSizeOptions(root.searchTotal)
+  }
+
+  function preferredPageSize() {
+    return CtlModel.preferredPageSize(root.searchTotal)
+  }
+
+  function ensurePageSizeValid() {
+    if (root.searchTotal <= 0) return
+    var opts = root.pageSizeOptions()
+    var found = false
+    for (var i = 0; i < opts.length; i++) {
+      if (opts[i].value === String(root.pageSize)) {
+        found = true
+        break
+      }
+    }
+    if (!found) {
+      root.pageSize = root.preferredPageSize()
+      root.pageCache = {}
+    }
+  }
+
+  function defaultExportPath() {
+    var home = Quickshell.env("HOME") || "/home/mb"
+    return home + "/Downloads/ctl_export_" + CtlModel.sanitizeName(root.searchQuery) + ".xlsx"
+  }
+
+  function exportToExcel() {
+    if (!root.searchQuery || root.searchRunning) return
+    root.exportStatus = "Exporting…"
+    exportProc.command = ["/home/mb/.local/bin/omarchy-ctl", "export", root.searchQuery, "--output", root.exportPath]
+    exportProc.running = true
   }
 
   function clearSearch() {
     root.searchResults = []
     root.searchTotal = 0
     root.searchQuery = ""
+    root.pageCache = {}
+    root.currentPage = 0
+    root.pendingPage = 1
+    root.exportStatus = ""
     searchField.text = ""
     Qt.callLater(function() { searchField.forceActiveFocus() })
   }
@@ -141,29 +223,52 @@ Item {
       onStreamFinished: {
         var raw = String(text || "").trim()
         if (!raw) {
+          root.pageFetching = false
           root.searchRunning = false
           return
         }
         try {
           var data = JSON.parse(raw)
+          var page = root.pendingPage || 1
+          root.pageCache[String(page)] = data.files || []
+          root.currentPage = page
+          root.searchResults = data.files || []
           root.searchTotal = data.total || 0
-          if (root.pagingMore) {
-            root.searchResults = root.searchResults.concat(data.files || [])
-          } else {
-            root.searchResults = data.files || []
-          }
+          root.ensurePageSizeValid()
         } catch (e) {
           console.warn("CTL search parse error:", e)
           root.searchResults = []
           root.searchTotal = 0
         } finally {
+          root.pageFetching = false
           root.searchRunning = false
         }
       }
     }
     onExited: function(exitCode) {
       if (exitCode !== 0) {
+        root.pageFetching = false
         root.searchRunning = false
+      }
+    }
+  }
+
+  Process {
+    id: exportProc
+    command: ["/home/mb/.local/bin/omarchy-ctl", "export", root.searchQuery, "--output", root.exportPath]
+    stdout: StdioCollector {
+      id: exportCollector
+      waitForEnd: true
+      onStreamFinished: {
+        var raw = String(text || "").trim()
+        if (raw) {
+          root.exportStatus = raw
+        }
+      }
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0) {
+        root.exportStatus = "Export failed"
       }
     }
   }
@@ -262,6 +367,12 @@ Item {
             if (!searchField.activeFocus) {
               root.doSearch()
             }
+            event.accepted = true
+          } else if (event.key === Qt.Key_PageUp) {
+            root.gotoPrev()
+            event.accepted = true
+          } else if (event.key === Qt.Key_PageDown) {
+            root.gotoNext()
             event.accepted = true
           }
         }
@@ -450,15 +561,16 @@ Item {
 
               ListView {
                 id: resultsList
-                anchors.fill: parent
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: pagerBar.top
+                anchors.bottomMargin: Style.spacing.sm
                 model: root.visibleResults
                 spacing: Style.space(6)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 interactive: contentHeight > height
-                footer: resultsList.count > 0 && root.hasMore
-                  ? showMoreFooter
-                  : null
 
                 delegate: Rectangle {
                   required property var modelData
@@ -511,39 +623,104 @@ Item {
                 }
               }
 
-              Component {
-                id: showMoreFooter
-                Rectangle {
-                  width: resultsList.width
-                  height: Style.space(34)
-                  radius: Math.min(6, Style.cornerRadius)
-                  color: showMoreArea.containsMouse ? Style.hoverFillFor(root.foreground, root.accent) : "transparent"
-                  border.width: 1
-                  border.color: root.faint
+              // ---- Pager + per-page + export ----
+              Item {
+                id: pagerBar
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Style.space(56)
 
-                  Text {
-                    anchors.centerIn: parent
-                    textFormat: Text.PlainText
-                    text: root.searchRunning ? "Loading more…"
-                      : ("Show more (" + (root.searchTotal - root.searchResults.length) + " remaining)")
-                    color: root.foreground
-                    font.family: Style.font.menuFamily
-                    font.pixelSize: Style.font.bodySmall
-                    font.italic: root.searchRunning
-                  }
+                Button {
+                  id: prevButton
+                  anchors.left: parent.left
+                  anchors.verticalCenter: parent.verticalCenter
+                  iconText: "\uf104"
+                  tooltipText: "Previous page"
+                  foreground: root.foreground
+                  accent: root.accent
+                  opacity: root.currentPage > 1 ? 1 : 0.35
+                  enabled: root.currentPage > 1
+                  onClicked: root.gotoPrev()
+                }
 
-                  MouseArea {
-                    id: showMoreArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.loadMore()
+                Text {
+                  id: pageIndicator
+                  anchors.left: prevButton.right
+                  anchors.leftMargin: Style.spacing.md
+                  anchors.verticalCenter: parent.verticalCenter
+                  textFormat: Text.PlainText
+                  text: root.searchTotal > 0
+                    ? "Page " + root.currentPage + " / " + root.totalPages + " · " + root.searchTotal + " result" + (root.searchTotal === 1 ? "" : "s")
+                    : ""
+                  color: root.dim
+                  font.family: Style.font.menuFamily
+                  font.pixelSize: Style.font.bodySmall
+                }
+
+                Button {
+                  id: nextButton
+                  anchors.left: pageIndicator.right
+                  anchors.leftMargin: Style.spacing.md
+                  anchors.verticalCenter: parent.verticalCenter
+                  iconText: "\uf105"
+                  tooltipText: "Next page"
+                  foreground: root.foreground
+                  accent: root.accent
+                  opacity: root.currentPage < root.totalPages ? 1 : 0.35
+                  enabled: root.currentPage < root.totalPages
+                  onClicked: root.gotoNext()
+                }
+
+                Button {
+                  id: exportButton
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  iconText: "\uf1c1"
+                  tooltipText: "Export all results to Excel"
+                  foreground: root.foreground
+                  accent: root.accent
+                  onClicked: root.exportToExcel()
+                }
+
+                Dropdown {
+                  id: pageSizeDropdown
+                  anchors.right: exportStatusLabel.left
+                  anchors.rightMargin: Style.spacing.md
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(110)
+                  label: "Per page"
+                  foreground: root.foreground
+                  background: root.background
+                  popupBorder: root.border
+                  accent: root.accent
+                  fontFamily: Style.font.menuFamily
+                  options: root.pageSizeOptions()
+                  value: String(root.pageSize)
+                  onChanged: function(v) {
+                    root.onPageSizeChosen(v)
                   }
+                }
+
+                Text {
+                  id: exportStatusLabel
+                  anchors.right: exportButton.left
+                  anchors.rightMargin: Style.spacing.md
+                  anchors.verticalCenter: parent.verticalCenter
+                  textFormat: Text.PlainText
+                  visible: root.exportStatus !== ""
+                  text: root.exportStatus
+                  color: root.dim
+                  font.family: Style.font.menuFamily
+                  font.pixelSize: Style.font.caption
+                  elide: Text.ElideRight
+                  horizontalAlignment: Text.AlignRight
+                  width: visible ? Math.min(Style.space(300), Math.max(Style.space(80), pagerBar.width * 0.28)) : 0
                 }
               }
 
               Text {
-                anchors.centerIn: parent
+                anchors.centerIn: resultsList
                 visible: !root.searchRunning && root.searchQuery !== "" && root.visibleResults.length === 0
                 textFormat: Text.PlainText
                 text: "No results"
@@ -554,7 +731,7 @@ Item {
               }
 
               Text {
-                anchors.centerIn: parent
+                anchors.centerIn: resultsList
                 visible: root.searchQuery === "" && !root.searchRunning && root.allTags.length === 0 && !root.tagsRunning
                 textFormat: Text.PlainText
                 text: "Loading tags…"

@@ -164,6 +164,101 @@ async def _search(query: str, json_output: bool = False, limit: int = 50, offset
 
 
 @app.command()
+def export(
+    query: str = typer.Argument(..., help="Search query"),
+    output: Path = typer.Option(Path("~/Downloads/ctl_export.xlsx").expanduser(), "--output", "-o", help="Output .xlsx file path"),
+) -> None:
+    """Export all search results for a query to an Excel file."""
+    asyncio.run(_export(query, output))
+
+
+async def _export(query: str, output: Path) -> None:
+    log.info("export_start", query=query)
+    crypto = CryptoService(Path("~/.config/omarchy-ctl/encryption.key").expanduser())
+    try:
+        crypto.load("default")
+    except Exception:
+        return
+    db = await get_storage("~/.local/share/omarchy-ctl/omarchy-ctl.db", crypto)
+    try:
+        idx = SearchIndex(db)
+        page = 500
+        offset = 0
+        files_list: list[dict] = []
+        total = 0
+        while True:
+            result = await idx.query(SearchQuery(text=query, tags=[query], limit=page, offset=offset))
+            total = result.total
+            files_list.extend(result.files)
+            if len(files_list) >= total or len(result.files) < page:
+                break
+            offset += page
+
+        tag_map: dict[str, list[str]] = {}
+        if files_list:
+            conn = await db.get_connection()
+            placeholders = ",".join("?" * len(files_list))
+            cur = await conn.execute(
+                "SELECT ft.file_id, t.name FROM file_tags ft JOIN tags t ON ft.tag_id = t.id WHERE ft.file_id IN ("
+                + placeholders
+                + ") ORDER BY t.name",
+                [f["id"] for f in files_list],
+            )
+            for file_id, name in await cur.fetchall():
+                tag_map.setdefault(file_id, []).append(name)
+
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Alignment, Font, PatternFill
+            from openpyxl.utils import get_column_letter
+        except ImportError:
+            console.print("[red]openpyxl is required to export. Install it with: pip install openpyxl[/red]")
+            raise typer.Exit(1)
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Results"
+        headers = ["#", "Filename", "Path", "Extension", "MIME Type", "Size (bytes)", "Tags", "Modified", "Content Snippet"]
+        ws.append(headers)
+        header_fill = PatternFill("solid", fgColor="1F2937")
+        header_font = Font(color="FFFFFFFF", bold=True)
+        for col in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(vertical="center")
+
+        for row, f in enumerate(files_list, start=2):
+            content = str(f.get("content") or "")[:20000]
+            ws.append([
+                row - 1,
+                f.get("filename", ""),
+                f.get("path", ""),
+                f.get("extension", ""),
+                f.get("mime_type", ""),
+                f.get("size_bytes"),
+                ", ".join(tag_map.get(f.get("id", ""), [])),
+                f.get("modified_at", ""),
+                content,
+            ])
+
+        for col, width in enumerate([5, 30, 60, 12, 18, 12, 32, 24, 80], start=1):
+            ws.column_dimensions[get_column_letter(col)].width = width
+        ws.freeze_panes = "A2"
+
+        output = output.expanduser()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        wb.save(str(output))
+        log.info("export_done", query=query, rows=len(files_list), path=str(output))
+        console.print(f"Exported [bold]{len(files_list)}[/bold] records for '{query}' to [cyan]{output}[/cyan]")
+    except Exception as e:
+        log.error("export_failed", query=query, error=str(e))
+        raise
+    finally:
+        await close_storage()
+
+
+@app.command()
 def tags(json: bool = typer.Option(False, "--json", help="Output JSON")) -> None:
     """List all tags."""
     asyncio.run(_tags(json))
