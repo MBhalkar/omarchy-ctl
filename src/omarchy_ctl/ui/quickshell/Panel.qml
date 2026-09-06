@@ -11,14 +11,85 @@ Panel {
   ipcTarget: "mbhalkar.ctl"
   manageIpc: false
 
+  property var searchResults: []
+  property int displayLimit: 20
+  property int searchTotal: 0
+  property string searchQuery: ""
+  property bool searchRunning: false
+  property var allTags: []
+  property bool tagsRunning: false
+
   property var anchorItem: null
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
 
+  Process {
+    id: searchProc
+    property var owner: null
+    command: ["/home/mb/.local/bin/omarchy-ctl", "search", root.searchQuery, "--json"]
+    stdout: StdioCollector {
+      id: searchCollector
+      waitForEnd: true
+      onStreamFinished: {
+        var raw = String(text || "").trim()
+        if (!raw) {
+          root.searchRunning = false
+          return
+        }
+        try {
+          var data = JSON.parse(raw)
+          root.searchTotal = data.total || 0
+          root.searchResults = data.files || []
+        } catch (e) {
+          console.warn("CTL search parse error:", e)
+          root.searchResults = []
+          root.searchTotal = 0
+        } finally {
+          root.searchRunning = false
+        }
+      }
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0) {
+        root.searchRunning = false
+      }
+    }
+  }
+
+  Process {
+    id: tagsProc
+    property var owner: null
+    command: ["/home/mb/.local/bin/omarchy-ctl", "tags", "--json"]
+    stdout: StdioCollector {
+      id: tagsCollector
+      waitForEnd: true
+      onStreamFinished: {
+        var raw = String(text || "").trim()
+        if (!raw) {
+          root.tagsRunning = false
+          return
+        }
+        try {
+          root.allTags = JSON.parse(raw) || []
+        } catch (e) {
+          console.warn("CTL tags parse error:", e)
+          root.allTags = []
+        } finally {
+          root.tagsRunning = false
+        }
+      }
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0) {
+        root.tagsRunning = false
+      }
+    }
+  }
+
   function open() {
     root.controller.show()
-    if (!CtlModel.allTags || CtlModel.allTags.length === 0) {
-      CtlModel.loadTags()
+    if (!root.allTags || root.allTags.length === 0) {
+      loadTags()
     }
     Qt.callLater(function() { searchField.forceActiveFocus() })
   }
@@ -33,19 +104,34 @@ Panel {
   }
 
   function reloadTags() {
-    CtlModel.loadTags()
+    loadTags()
   }
 
   function doSearch() {
-    CtlModel.runSearch(searchField.text)
+    var query = searchField.text.trim()
+    if (!query) return
+    root.searchQuery = query
+    root.searchRunning = true
+    root.searchResults = []
+    root.displayLimit = 20
+    root.searchTotal = 0
+    searchProc.command = ["/home/mb/.local/bin/omarchy-ctl", "search", query, "--json"]
+    searchProc.running = true
   }
 
   function clearSearch() {
-    CtlModel.searchResults = []
-    CtlModel.searchTotal = 0
-    CtlModel.searchQuery = ""
+    root.searchResults = []
+    root.searchTotal = 0
+    root.searchQuery = ""
     searchField.text = ""
     Qt.callLater(function() { searchField.forceActiveFocus() })
+  }
+
+  function loadTags() {
+    if (root.tagsRunning) return
+    root.tagsRunning = true
+    root.allTags = []
+    tagsProc.running = true
   }
 
   function openFile(path) {
@@ -98,12 +184,11 @@ Panel {
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.body
 
+            onAccepted: doSearch()
+
             Keys.onPressed: function(event) {
               if (event.key === Qt.Key_Escape) {
                 root.close()
-                event.accepted = true
-              } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                doSearch()
                 event.accepted = true
               }
             }
@@ -137,22 +222,22 @@ Panel {
 
         // ---- Status line ----
         Text {
-          visible: CtlModel.searchQuery !== ""
+          visible: root.searchQuery !== ""
           textFormat: Text.PlainText
-          text: CtlModel.searchRunning ? "Searching…" : (CtlModel.searchTotal + " result" + (CtlModel.searchTotal === 1 ? "" : "s") + " for \"" + CtlModel.searchQuery + "\"")
+          text: root.searchRunning ? "Searching…" : (root.searchTotal + " result" + (root.searchTotal === 1 ? "" : "s") + " for \"" + root.searchQuery + "\"")
           color: Qt.darker(root.bar.foreground, 1.4)
           font.family: root.bar.fontFamily
           font.pixelSize: Style.font.bodySmall
-          font.italic: CtlModel.searchRunning
+          font.italic: root.searchRunning
         }
 
         // ---- Tags row ----
         Row {
           width: parent.width
           spacing: Style.space(6)
-          visible: CtlModel.allTags.length > 0
+          visible: root.allTags.length > 0
           Repeater {
-            model: CtlModel.allTags
+            model: root.allTags
             delegate: Rectangle {
               required property var modelData
               required property int index
@@ -191,7 +276,7 @@ Panel {
 
         // ---- Results ----
         Repeater {
-          model: CtlModel.searchResults
+          model: root.searchResults.slice(0, root.displayLimit)
           delegate: Rectangle {
             required property var modelData
             required property int index
@@ -236,9 +321,37 @@ Panel {
           }
         }
 
+        // ---- Show More ----
+        Rectangle {
+          visible: root.searchResults.length > root.displayLimit
+          width: parent.width
+          height: Style.space(32)
+          radius: Style.cornerRadius
+          color: showMoreArea.containsMouse ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
+          border.width: 1
+          border.color: Qt.darker(root.bar.foreground, 1.5)
+
+          Text {
+            anchors.centerIn: parent
+            textFormat: Text.PlainText
+            text: "Show more (" + (root.searchResults.length - root.displayLimit) + " remaining)"
+            color: root.bar.foreground
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          MouseArea {
+            id: showMoreArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.displayLimit += 20
+          }
+        }
+
         // ---- Empty state ----
         Text {
-          visible: !CtlModel.searchRunning && CtlModel.searchQuery !== "" && CtlModel.searchResults.length === 0
+          visible: !root.searchRunning && root.searchQuery !== "" && root.searchResults.length === 0
           textFormat: Text.PlainText
           text: "No results"
           color: Qt.darker(root.bar.foreground, 1.5)
@@ -249,7 +362,7 @@ Panel {
 
         // ---- Idle hint ----
         Text {
-          visible: CtlModel.searchQuery === "" && !CtlModel.searchRunning
+          visible: root.searchQuery === "" && !root.searchRunning
           textFormat: Text.PlainText
           text: "Type to search tags and content"
           color: Qt.darker(root.bar.foreground, 1.5)
