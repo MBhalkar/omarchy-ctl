@@ -92,6 +92,10 @@ Item {
 
   function reloadTags() {
     loadTags()
+    if (root.searchQuery && !root.searchRunning && !root.pageFetching) {
+      root.pageCache = {}
+      root.fetchPage(root.currentPage >= 1 ? root.currentPage : 1)
+    }
     return "ok"
   }
 
@@ -103,6 +107,19 @@ Item {
     var query = searchField.text.trim()
     if (!query) return
     root.searchQuery = query
+    // Drop any leftover auto-shrunk page size from a previous small result
+    // set (e.g. 5). Otherwise the new search would fetch --limit 5 and show
+    // a short page even though the pager reports many results. A
+    // user-chosen standard size is preserved.
+    var standard = [10, 25, 50, 100, 250, 500]
+    var keep = false
+    for (var i = 0; i < standard.length; i++) {
+      if (root.pageSize === standard[i]) {
+        keep = true
+        break
+      }
+    }
+    if (!keep) root.pageSize = 50
     root.pageCache = {}
     root.currentPage = 0
     root.pendingPage = 1
@@ -165,7 +182,7 @@ Item {
   }
 
   function ensurePageSizeValid() {
-    if (root.searchTotal <= 0) return
+    if (root.searchTotal <= 0) return false
     var opts = root.pageSizeOptions()
     var found = false
     for (var i = 0; i < opts.length; i++) {
@@ -177,7 +194,9 @@ Item {
     if (!found) {
       root.pageSize = root.preferredPageSize()
       root.pageCache = {}
+      return true
     }
+    return false
   }
 
   function defaultExportPath() {
@@ -228,6 +247,7 @@ Item {
           root.searchRunning = false
           return
         }
+        var refetching = false
         try {
           var data = JSON.parse(raw)
           var page = root.pendingPage || 1
@@ -235,14 +255,27 @@ Item {
           root.currentPage = page
           root.searchResults = data.files || []
           root.searchTotal = data.total || 0
-          root.ensurePageSizeValid()
+          if (root.ensurePageSizeValid()) {
+            // The page we just fetched used a stale page size, so what is
+            // shown would be short. Refetch page 1 with the corrected size.
+            refetching = true
+            root.pageFetching = false
+            root.searchRunning = true
+            root.pageCache = {}
+            root.currentPage = 0
+            root.pendingPage = 1
+            root.fetchPage(1)
+            return
+          }
         } catch (e) {
           console.warn("CTL search parse error:", e)
           root.searchResults = []
           root.searchTotal = 0
         } finally {
-          root.pageFetching = false
-          root.searchRunning = false
+          if (!refetching) {
+            root.pageFetching = false
+            root.searchRunning = false
+          }
         }
       }
     }
