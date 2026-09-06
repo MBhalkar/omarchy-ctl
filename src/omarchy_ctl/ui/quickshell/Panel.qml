@@ -574,17 +574,34 @@ Item {
 
                 delegate: Rectangle {
                   required property var modelData
+                  required property int index
                   readonly property string fileName: modelData.filename || modelData.path || ""
                   readonly property string filePath: modelData.path || ""
+                  readonly property int ordinal: (root.currentPage - 1) * root.pageSize + index + 1
                   readonly property bool hot: resultArea.containsMouse
                   width: resultsList.width
                   height: Math.max(Style.space(46), resultColumn.implicitHeight + Style.space(10))
                   radius: Math.min(6, Style.cornerRadius)
                   color: hot ? Style.hoverFillFor(root.foreground, root.accent) : "transparent"
 
+                  Text {
+                    id: ordinalText
+                    anchors.left: parent.left
+                    anchors.leftMargin: Style.spacing.md
+                    anchors.verticalCenter: parent.verticalCenter
+                    textFormat: Text.PlainText
+                    text: String(ordinal)
+                    color: hot ? root.accent : root.dim
+                    font.family: Style.font.menuFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    width: Style.space(26)
+                    horizontalAlignment: Text.AlignLeft
+                  }
+
                   Column {
                     id: resultColumn
-                    anchors.left: parent.left
+                    anchors.left: ordinalText.right
                     anchors.right: parent.right
                     anchors.leftMargin: Style.spacing.md
                     anchors.rightMargin: Style.spacing.md
@@ -629,7 +646,7 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                height: Style.space(56)
+                height: Style.space(44)
 
                 Button {
                   id: prevButton
@@ -672,24 +689,28 @@ Item {
                   onClicked: root.gotoNext()
                 }
 
-                Button {
-                  id: exportButton
-                  anchors.right: parent.right
+                Text {
+                  id: perPageLabel
+                  anchors.left: nextButton.right
+                  anchors.leftMargin: Style.spacing.lg
                   anchors.verticalCenter: parent.verticalCenter
-                  iconText: "\uf1c1"
-                  tooltipText: "Export all results to Excel"
-                  foreground: root.foreground
-                  accent: root.accent
-                  onClicked: root.exportToExcel()
+                  textFormat: Text.PlainText
+                  text: "Per page"
+                  color: root.dim
+                  font.family: Style.font.menuFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
                 }
 
-                Dropdown {
+                CtlDropdown {
                   id: pageSizeDropdown
-                  anchors.right: exportStatusLabel.left
-                  anchors.rightMargin: Style.spacing.md
+                  anchors.left: perPageLabel.right
+                  anchors.leftMargin: Style.spacing.sm
                   anchors.verticalCenter: parent.verticalCenter
-                  width: Style.space(110)
-                  label: "Per page"
+                  width: Style.space(108)
+                  height: Style.space(28)
+                  showLabel: false
+                  openUpward: true
                   foreground: root.foreground
                   background: root.background
                   popupBorder: root.border
@@ -716,6 +737,17 @@ Item {
                   elide: Text.ElideRight
                   horizontalAlignment: Text.AlignRight
                   width: visible ? Math.min(Style.space(300), Math.max(Style.space(80), pagerBar.width * 0.28)) : 0
+                }
+
+                Button {
+                  id: exportButton
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  iconText: "\uf1c3"
+                  tooltipText: "Export all results to Excel"
+                  foreground: root.foreground
+                  accent: root.accent
+                  onClicked: root.exportToExcel()
                 }
               }
 
