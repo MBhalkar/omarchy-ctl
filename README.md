@@ -77,6 +77,18 @@ Note: `export` needs the `openpyxl` package (`pip install openpyxl`) if it isn't
 - Local IPC socket: `~/.local/share/omarchy-ctl/omarchy-ctl.sock`
 - Sample config: `config/omarchy-ctl.toml` (scanner paths, storage paths, server socket)
 
+## Removal
+
+```bash
+systemctl --user disable --now omarchy-ctl.service
+rm -f ~/.config/systemd/user/omarchy-ctl.service \
+  ~/.local/bin/omarchy-ctl ~/.local/bin/omarchy-ctl-daemon
+rm -rf ~/.config/omarchy/plugins/mbhalkar.ctl \
+  ~/.local/share/omarchy-ctl ~/.config/omarchy-ctl
+```
+
+Removing `~/.local/share/omarchy-ctl` deletes the tag index (a reinstall will need a fresh `scan`).
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
