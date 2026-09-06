@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -109,6 +110,7 @@ Item {
     root.searchResults = []
     root.exportStatus = ""
     root.exportPath = root.defaultExportPath()
+    root.searchRunning = true
     root.fetchPage(1)
   }
 
@@ -123,7 +125,6 @@ Item {
       return
     }
     root.pageFetching = true
-    root.searchRunning = true
     root.pendingPage = n
     searchProc.command = ["/home/mb/.local/bin/omarchy-ctl", "search", root.searchQuery, "--json", "--limit", String(root.pageSize), "--offset", String((n - 1) * root.pageSize)]
     searchProc.running = true
@@ -571,6 +572,17 @@ Item {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 interactive: contentHeight > height
+                ScrollBar.vertical: ScrollBar {
+                  id: resultsScrollBar
+                  policy: resultsList.contentHeight > resultsList.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                  contentItem: Rectangle {
+                    implicitWidth: 6
+                    implicitHeight: 30
+                    radius: 3
+                    color: resultsScrollBar.active ? Qt.rgba(0, 0, 0, 0.38) : Qt.rgba(0, 0, 0, 0.18)
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                  }
+                }
 
                 delegate: Rectangle {
                   required property var modelData
