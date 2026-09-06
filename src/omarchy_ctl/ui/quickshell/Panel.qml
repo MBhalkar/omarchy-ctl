@@ -459,8 +459,8 @@ Item {
                     id: resultColumn
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    anchors.rightMargin: Style.space(64)
                     anchors.leftMargin: Style.spacing.md
+                    anchors.rightMargin: Style.spacing.md
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Style.space(3)
 
@@ -484,19 +484,6 @@ Item {
                       font.pixelSize: Style.font.caption
                       elide: Text.ElideMiddle
                     }
-                  }
-
-                  Text {
-                    id: extBadge
-                    anchors.right: parent.right
-                    anchors.rightMargin: Style.spacing.md
-                    anchors.verticalCenter: parent.verticalCenter
-                    textFormat: Text.PlainText
-                    text: modelData.extension ? modelData.extension.toUpperCase() : ""
-                    color: hot ? root.accent : root.dim
-                    font.family: Style.font.menuFamily
-                    font.pixelSize: Style.font.caption
-                    font.bold: true
                   }
 
                   MouseArea {
