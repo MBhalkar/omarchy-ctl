@@ -136,6 +136,25 @@ async def test_search_index_query(tmp_db):
 
 
 @pytest.mark.asyncio
+async def test_search_exact_hyphenated_tag(tmp_db):
+    mgr = TagManager(tmp_db)
+    idx = SearchIndex(tmp_db)
+    conn = await tmp_db.get_connection()
+    await conn.execute("INSERT INTO files (id, path, filename, extension, content) VALUES (?, ?, ?, ?, ?)", ("f1", "/pics/photo.jpg", "photo.jpg", "jpg", ""))
+    await conn.commit()
+    await idx.rebuild()
+    from omarchy_ctl.core.context import TagCandidate
+    tags = await mgr.suggest([TagCandidate(name="image-jpeg", category="type", confidence=1.0, source="metadata")])
+    await mgr.apply("f1", tags)
+    result = await idx.query(SearchQuery(text="image-jpeg", tags=["image-jpeg"]))
+    assert result.total == 1
+    assert result.files[0]["filename"] == "photo.jpg"
+    text_only = await idx.query(SearchQuery(text="image-jpeg"))
+    assert text_only.total == 1
+    assert text_only.files[0]["filename"] == "photo.jpg"
+
+
+@pytest.mark.asyncio
 async def test_search_content_matches(tmp_db):
     idx = SearchIndex(tmp_db)
     conn = await tmp_db.get_connection()

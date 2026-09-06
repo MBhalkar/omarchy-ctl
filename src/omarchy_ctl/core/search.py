@@ -39,23 +39,52 @@ class SearchIndex:
         results: list[dict] = []
 
         if query.text and query.tags:
-            text_params = [query.text]
             tag_params = [f"%{t}%" for t in query.tags]
-            text_sql = "SELECT f.* FROM files f JOIN files_fts ON files_fts.rowid = f.rowid WHERE files_fts MATCH ?"
             tag_clauses = " OR ".join(["t.name LIKE ?"] * len(query.tags))
             tag_sql = "SELECT f.* FROM files f JOIN file_tags ft ON f.id = ft.file_id JOIN tags t ON ft.tag_id = t.id WHERE " + tag_clauses
-            sql = f"SELECT * FROM ({text_sql} UNION {tag_sql}) GROUP BY id ORDER BY modified_at DESC LIMIT ? OFFSET ?"
-            params = text_params + tag_params + [query.limit, query.offset]
-            cur = await conn.execute(sql, params)
-            results = [dict(r) for r in await cur.fetchall()]
-            count_sql = f"SELECT COUNT(DISTINCT id) FROM ({text_sql} UNION {tag_sql})"
-            cur = await conn.execute(count_sql, text_params + tag_params)
+
+            tag_check = await conn.execute("SELECT 1 FROM tags WHERE name = ? LIMIT 1", (query.text,))
+            is_exact_tag = (await tag_check.fetchone()) is not None
+
+            if is_exact_tag:
+                sql = f"SELECT f.* FROM files f JOIN file_tags ft ON f.id = ft.file_id JOIN tags t ON ft.tag_id = t.id WHERE t.name = ? GROUP BY f.id ORDER BY f.modified_at DESC LIMIT ? OFFSET ?"
+                params = [query.text, query.limit, query.offset]
+                cur = await conn.execute(sql, params)
+                results = [dict(r) for r in await cur.fetchall()]
+                cur = await conn.execute("SELECT COUNT(DISTINCT f.id) FROM files f JOIN file_tags ft ON f.id = ft.file_id JOIN tags t ON ft.tag_id = t.id WHERE t.name = ?", (query.text,))
+            else:
+                text_params = [query.text]
+                text_sql = "SELECT f.* FROM files f JOIN files_fts ON files_fts.rowid = f.rowid WHERE files_fts MATCH ?"
+                sql = f"SELECT * FROM ({text_sql} UNION {tag_sql}) GROUP BY id ORDER BY modified_at DESC LIMIT ? OFFSET ?"
+                params = text_params + tag_params + [query.limit, query.offset]
+                cur = await conn.execute(sql, params)
+                results = [dict(r) for r in await cur.fetchall()]
+                count_sql = f"SELECT COUNT(DISTINCT id) FROM ({text_sql} UNION {tag_sql})"
+                cur = await conn.execute(count_sql, text_params + tag_params)
         elif query.text:
-            sql = "SELECT f.* FROM files f JOIN files_fts ON files_fts.rowid = f.rowid WHERE files_fts MATCH ? ORDER BY f.modified_at DESC LIMIT ? OFFSET ?"
-            params = [query.text, query.limit, query.offset]
-            cur = await conn.execute(sql, params)
-            results = [dict(r) for r in await cur.fetchall()]
-            cur = await conn.execute("SELECT COUNT(*) FROM files f JOIN files_fts ON files_fts.rowid = f.rowid WHERE files_fts MATCH ?", (query.text,))
+            tag_check = await conn.execute("SELECT 1 FROM tags WHERE name = ? LIMIT 1", (query.text,))
+            is_exact_tag = (await tag_check.fetchone()) is not None
+            if is_exact_tag:
+                sql = "SELECT f.* FROM files f JOIN file_tags ft ON f.id = ft.file_id JOIN tags t ON ft.tag_id = t.id WHERE t.name = ? ORDER BY f.modified_at DESC LIMIT ? OFFSET ?"
+                params = [query.text, query.limit, query.offset]
+                cur = await conn.execute(sql, params)
+                results = [dict(r) for r in await cur.fetchall()]
+                cur = await conn.execute("SELECT COUNT(DISTINCT f.id) FROM files f JOIN file_tags ft ON f.id = ft.file_id JOIN tags t ON ft.tag_id = t.id WHERE t.name = ?", (query.text,))
+            else:
+                try:
+                    sql = "SELECT f.* FROM files f JOIN files_fts ON files_fts.rowid = f.rowid WHERE files_fts MATCH ? ORDER BY f.modified_at DESC LIMIT ? OFFSET ?"
+                    params = [query.text, query.limit, query.offset]
+                    cur = await conn.execute(sql, params)
+                    results = [dict(r) for r in await cur.fetchall()]
+                    cur = await conn.execute("SELECT COUNT(*) FROM files f JOIN files_fts ON files_fts.rowid = f.rowid WHERE files_fts MATCH ?", (query.text,))
+                except Exception:
+                    tag_clauses = "t.name LIKE ?"
+                    tag_params = [f"%{query.text}%"]
+                    sql = f"SELECT f.* FROM files f JOIN file_tags ft ON f.id = ft.file_id JOIN tags t ON ft.tag_id = t.id WHERE {tag_clauses} ORDER BY f.modified_at DESC LIMIT ? OFFSET ?"
+                    params = tag_params + [query.limit, query.offset]
+                    cur = await conn.execute(sql, params)
+                    results = [dict(r) for r in await cur.fetchall()]
+                    cur = await conn.execute(f"SELECT COUNT(DISTINCT f.id) FROM files f JOIN file_tags ft ON f.id = ft.file_id JOIN tags t ON ft.tag_id = t.id WHERE {tag_clauses}", tag_params)
         elif query.tags:
             tag_clauses = " OR ".join(["t.name LIKE ?"] * len(query.tags))
             tag_params = [f"%{t}%" for t in query.tags]
