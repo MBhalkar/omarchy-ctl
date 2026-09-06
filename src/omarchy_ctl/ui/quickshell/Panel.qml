@@ -16,14 +16,17 @@ Item {
 
   property bool opened: false
   property var searchResults: []
-  property int displayLimit: 20
+  property int pageSize: 50
   property int searchTotal: 0
   property string searchQuery: ""
   property bool searchRunning: false
+  property bool pagingMore: false
   property var allTags: []
   property bool tagsRunning: false
 
-  readonly property var visibleResults: root.searchResults.slice(0, root.displayLimit)
+  readonly property bool hasMore: root.searchQuery !== "" && root.searchResults.length > 0 && root.searchResults.length < root.searchTotal
+
+  readonly property var visibleResults: root.searchResults
 
   // Palette
   property color background: Color.menu.background
@@ -95,10 +98,18 @@ Item {
     if (!query) return
     root.searchQuery = query
     root.searchRunning = true
+    root.pagingMore = false
     root.searchResults = []
-    root.displayLimit = 20
     root.searchTotal = 0
-    searchProc.command = ["/home/mb/.local/bin/omarchy-ctl", "search", query, "--json"]
+    searchProc.command = ["/home/mb/.local/bin/omarchy-ctl", "search", query, "--json", "--limit", String(root.pageSize), "--offset", "0"]
+    searchProc.running = true
+  }
+
+  function loadMore() {
+    if (root.searchRunning || !root.hasMore) return
+    root.searchRunning = true
+    root.pagingMore = true
+    searchProc.command = ["/home/mb/.local/bin/omarchy-ctl", "search", root.searchQuery, "--json", "--limit", String(root.pageSize), "--offset", String(root.searchResults.length)]
     searchProc.running = true
   }
 
@@ -136,7 +147,11 @@ Item {
         try {
           var data = JSON.parse(raw)
           root.searchTotal = data.total || 0
-          root.searchResults = data.files || []
+          if (root.pagingMore) {
+            root.searchResults = root.searchResults.concat(data.files || [])
+          } else {
+            root.searchResults = data.files || []
+          }
         } catch (e) {
           console.warn("CTL search parse error:", e)
           root.searchResults = []
@@ -441,7 +456,7 @@ Item {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 interactive: contentHeight > height
-                footer: resultsList.count > 0 && root.searchResults.length > root.displayLimit
+                footer: resultsList.count > 0 && root.hasMore
                   ? showMoreFooter
                   : null
 
@@ -509,10 +524,12 @@ Item {
                   Text {
                     anchors.centerIn: parent
                     textFormat: Text.PlainText
-                    text: "Show more (" + (root.searchResults.length - root.displayLimit) + " remaining)"
+                    text: root.searchRunning ? "Loading more…"
+                      : ("Show more (" + (root.searchTotal - root.searchResults.length) + " remaining)")
                     color: root.foreground
                     font.family: Style.font.menuFamily
                     font.pixelSize: Style.font.bodySmall
+                    font.italic: root.searchRunning
                   }
 
                   MouseArea {
@@ -520,7 +537,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.displayLimit += 20
+                    onClicked: root.loadMore()
                   }
                 }
               }

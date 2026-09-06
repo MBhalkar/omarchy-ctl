@@ -116,12 +116,17 @@ async def _scan(paths: list[str]) -> None:
 
 
 @app.command()
-def search(query: str = typer.Argument(..., help="Search query"), json: bool = typer.Option(False, "--json", help="Output JSON")) -> None:
+def search(
+    query: str = typer.Argument(..., help="Search query"),
+    json: bool = typer.Option(False, "--json", help="Output JSON"),
+    limit: int = typer.Option(50, "--limit", "-n", min=1, max=10000, help="Maximum results to return"),
+    offset: int = typer.Option(0, "--offset", min=0, help="Number of results to skip"),
+) -> None:
     """Search files by tags or content."""
-    asyncio.run(_search(query, json))
+    asyncio.run(_search(query, json, limit, offset))
 
 
-async def _search(query: str, json_output: bool = False) -> None:
+async def _search(query: str, json_output: bool = False, limit: int = 50, offset: int = 0) -> None:
     log.info("search_start", query=query)
     crypto = CryptoService(Path("~/.config/omarchy-ctl/encryption.key").expanduser())
     try:
@@ -131,7 +136,7 @@ async def _search(query: str, json_output: bool = False) -> None:
     db = await get_storage("~/.local/share/omarchy-ctl/omarchy-ctl.db", crypto)
     try:
         idx = SearchIndex(db)
-        result = await idx.query(SearchQuery(text=query, tags=[query]))
+        result = await idx.query(SearchQuery(text=query, tags=[query], limit=limit, offset=offset))
         log.info("search_done", query=query, total=result.total)
         if json_output:
             import json as _json
