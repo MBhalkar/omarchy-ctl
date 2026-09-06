@@ -136,3 +136,11 @@ async def get_storage(db_path: str, crypto: CryptoService) -> Database:
         _storage = Database(db_path, crypto)
         await _storage.init_db()
     return _storage
+
+
+async def close_storage() -> None:
+    """Close the cached storage connection so the process can exit cleanly."""
+    global _storage
+    if _storage is not None:
+        await _storage.close()
+        _storage = None

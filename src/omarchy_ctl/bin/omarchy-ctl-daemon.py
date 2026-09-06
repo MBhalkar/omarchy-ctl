@@ -1,38 +1,16 @@
-"""Main CTL application entry point."""
+"""Legacy daemon entry point.
+
+The canonical, importable module is ``omarchy_ctl.bin.omarchy_ctl_daemon``
+(underscores). This hyphenated file is kept only so the file can be executed
+directly (``python omarchy-ctl-daemon.py``); it is not importable by Python
+because filenames cannot contain hyphens.
+"""
 
 from __future__ import annotations
 
-import asyncio
-import signal
-from pathlib import Path
+from omarchy_ctl.bin.omarchy_ctl_daemon import main, run
 
-from omarchy_ctl.ui.ipc import IPCService
-
-
-async def main() -> None:
-    service = IPCService()
-    loop = asyncio.get_running_loop()
-    stop = asyncio.Event()
-
-    def _signal_handler():
-        stop.set()
-
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        try:
-            loop.add_signal_handler(sig, _signal_handler)
-        except NotImplementedError:
-            signal.signal(sig, lambda s, f: stop.set())
-
-    await service.start()
-    print(f"CTL IPC server running at {service.socket_path}")
-    await stop.wait()
-    await service.stop()
-    print("CTL stopped.")
-
+__all__ = ["main", "run"]
 
 if __name__ == "__main__":
-    asyncio.run(main())
-
-
-def run() -> None:
-    asyncio.run(main())
+    run()
