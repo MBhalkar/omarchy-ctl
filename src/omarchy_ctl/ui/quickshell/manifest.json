@@ -5,8 +5,10 @@
   "version": "0.1.0",
   "author": "CTL Contributors",
   "description": "Search files by tags and content from the bar",
-  "kinds": ["bar-widget"],
+  "kinds": ["overlay", "bar-widget"],
+  "keepLoaded": true,
   "entryPoints": {
+    "overlay": "Panel.qml",
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
