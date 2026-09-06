@@ -37,6 +37,20 @@ omarchy bar move mbhalkar.ctl --section left
 
 You can also place it in `center` or `right`. Click the widget in the bar to open a search popup. Right-click the widget to reload tags.
 
+## First-Time Experience
+
+When you open the panel before any scan has been run, no tags exist yet. Instead of showing an empty panel, CTL greets you with a guided message that explains how to get started:
+
+![CTL panel on first open](assets/screenshots/omarchy-ctl-first-time-loading-message.png)
+
+To generate your tags, scan the directories you care about. You can list multiple directories in a single command:
+
+```bash
+omarchy-ctl scan ~/Documents ~/Projects ~/Music ~/Downloads
+```
+
+Once the scan finishes, reopen the panel to browse and search your tags. Note that scan time depends on how many files the scanned directories (and all their subdirectories) contain.
+
 ## CLI Usage
 
 | Command | Description |
