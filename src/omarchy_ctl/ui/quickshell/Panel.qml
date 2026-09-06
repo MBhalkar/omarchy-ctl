@@ -29,6 +29,8 @@ Item {
   property string exportPath: ""
   property var allTags: []
   property bool tagsRunning: false
+  property string ctlVersion: ""
+  property bool versionRunning: false
 
   readonly property int totalPages: root.searchTotal > 0 ? Math.max(1, Math.ceil(root.searchTotal / Math.max(1, root.pageSize))) : 0
 
@@ -74,6 +76,7 @@ Item {
     } else if (!root.allTags || root.allTags.length === 0) {
       loadTags()
     }
+    loadVersion()
     Qt.callLater(function() {
       searchField.forceActiveFocus()
     })
@@ -92,6 +95,7 @@ Item {
 
   function reloadTags() {
     loadTags()
+    loadVersion()
     if (root.searchQuery && !root.searchRunning && !root.pageFetching) {
       root.pageCache = {}
       root.fetchPage(root.currentPage >= 1 ? root.currentPage : 1)
@@ -230,6 +234,16 @@ Item {
     tagsProc.running = true
   }
 
+  function loadVersion() {
+    // Read the installed manifest on every open/refresh so the label always
+    // reflects the currently installed version (e.g. after a plugin update).
+    if (root.versionRunning) return
+    root.versionRunning = true
+    var home = Quickshell.env("HOME") || "/home/mb"
+    versionProc.command = ["cat", home + "/.config/omarchy/plugins/mbhalkar.ctl/manifest.json"]
+    versionProc.running = true
+  }
+
   function openFile(path) {
     CtlModel.openFile(path)
   }
@@ -332,6 +346,34 @@ Item {
     onExited: function(exitCode) {
       if (exitCode !== 0) {
         root.tagsRunning = false
+      }
+    }
+  }
+
+  Process {
+    id: versionProc
+    command: ["cat", "manifest.json"]
+    stdout: StdioCollector {
+      id: versionCollector
+      waitForEnd: true
+      onStreamFinished: {
+        var raw = String(text || "").trim()
+        if (raw) {
+          try {
+            var data = JSON.parse(raw)
+            if (data && data.version) {
+              root.ctlVersion = "v" + String(data.version)
+            }
+          } catch (e) {
+            console.warn("CTL version parse error:", e)
+          }
+        }
+        root.versionRunning = false
+      }
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0) {
+        root.versionRunning = false
       }
     }
   }
@@ -448,6 +490,15 @@ Item {
               Text {
                 textFormat: Text.PlainText
                 text: "Contextual Tagging & Linking"
+                color: root.dim
+                font.family: Style.font.menuFamily
+                font.pixelSize: Style.font.caption
+              }
+
+              Text {
+                textFormat: Text.PlainText
+                text: root.ctlVersion
+                visible: root.ctlVersion !== ""
                 color: root.dim
                 font.family: Style.font.menuFamily
                 font.pixelSize: Style.font.caption
