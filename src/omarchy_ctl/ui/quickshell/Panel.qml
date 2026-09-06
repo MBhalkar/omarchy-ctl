@@ -396,17 +396,29 @@ Item {
               color: root.faint
             }
 
-            Text {
-              id: headerTitle
+            Column {
+              id: headerTitleCol
               anchors.left: parent.left
               anchors.leftMargin: root.contentMargin
               anchors.verticalCenter: parent.verticalCenter
-              textFormat: Text.PlainText
-              text: "CTL SEARCH"
-              color: root.foreground
-              font.family: Style.font.menuFamily
-              font.pixelSize: Style.font.heading
-              font.bold: true
+              spacing: Style.space(2)
+
+              Text {
+                textFormat: Text.PlainText
+                text: "CTL SEARCH"
+                color: root.foreground
+                font.family: Style.font.menuFamily
+                font.pixelSize: Style.font.heading
+                font.bold: true
+              }
+
+              Text {
+                textFormat: Text.PlainText
+                text: "Contextual Tagging & Linking"
+                color: root.dim
+                font.family: Style.font.menuFamily
+                font.pixelSize: Style.font.caption
+              }
             }
 
             Row {
@@ -437,7 +449,7 @@ Item {
 
             TextField {
               id: searchField
-              anchors.left: headerTitle.right
+              anchors.left: headerTitleCol.right
               anchors.right: headerButtons.left
               anchors.leftMargin: Style.spacing.md
               anchors.rightMargin: Style.spacing.md
