@@ -485,7 +485,9 @@ Item {
               textFormat: Text.PlainText
               text: root.searchRunning ? "Searching…"
                 : (root.searchQuery === ""
-                    ? root.allTags.length + " tags available · type to search or pick one"
+                    ? (root.allTags.length > 0
+                        ? root.allTags.length + " tags available · type to search or pick one"
+                        : (root.tagsRunning ? "Loading tags…" : "No tags yet · run a scan first"))
                     : root.searchTotal + " result" + (root.searchTotal === 1 ? "" : "s") + " for \"" + root.searchQuery + "\"")
               color: root.dim
               font.family: Style.font.menuFamily
@@ -786,15 +788,77 @@ Item {
                 font.italic: true
               }
 
-              Text {
+              Item {
                 anchors.centerIn: resultsList
                 visible: root.searchQuery === "" && !root.searchRunning && root.allTags.length === 0 && !root.tagsRunning
-                textFormat: Text.PlainText
-                text: "Loading tags…"
-                color: root.dim
-                font.family: Style.font.menuFamily
-                font.pixelSize: Style.font.bodySmall
-                font.italic: true
+                width: Math.min(Style.space(460), resultsList.width)
+                height: emptyStateColumn.implicitHeight
+
+                Column {
+                  id: emptyStateColumn
+                  anchors.fill: parent
+                  spacing: Style.spacing.md
+
+                  Text {
+                    width: parent.width
+                    textFormat: Text.PlainText
+                    text: "Nothing to show yet"
+                    color: root.foreground
+                    font.family: Style.font.menuFamily
+                    font.pixelSize: Style.font.body
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                  }
+
+                  Text {
+                    width: parent.width
+                    textFormat: Text.Wrap
+                    wrapMode: Text.Wrap
+                    text: "You haven't scanned any directories yet, so no tags have been generated. Run a scan to index your files and discover their tags:"
+                    color: root.dim
+                    font.family: Style.font.menuFamily
+                    font.pixelSize: Style.font.bodySmall
+                    horizontalAlignment: Text.AlignHCenter
+                    lineHeight: 1.4
+                  }
+
+                  Text {
+                    width: parent.width
+                    textFormat: Text.PlainText
+                    wrapMode: Text.Wrap
+                    text: "e.g.   omarchy-ctl scan ~/Documents ~/Projects ~/Music ~/Downloads"
+                    color: root.accent
+                    font.family: Style.font.menuFamily
+                    font.pixelSize: Style.font.bodySmall
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                  }
+
+                  Text {
+                    width: parent.width
+                    textFormat: Text.Wrap
+                    wrapMode: Text.Wrap
+                    text: "You can pick any directories you like — list as many as you want in the same command, and each one is scanned along with all its subdirectories. Once the scan finishes, reopen this pane to browse and search your tags."
+                    color: root.dim
+                    font.family: Style.font.menuFamily
+                    font.pixelSize: Style.font.bodySmall
+                    horizontalAlignment: Text.AlignHCenter
+                    lineHeight: 1.4
+                  }
+
+                  Text {
+                    width: parent.width
+                    textFormat: Text.Wrap
+                    wrapMode: Text.Wrap
+                    text: "Note: the time a scan takes depends on how many files the scanned directories (and all their subdirectories) contain."
+                    color: root.dim
+                    font.family: Style.font.menuFamily
+                    font.pixelSize: Style.font.caption
+                    font.italic: true
+                    horizontalAlignment: Text.AlignHCenter
+                    lineHeight: 1.4
+                  }
+                }
               }
             }
           }
